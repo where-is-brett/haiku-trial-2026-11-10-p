@@ -8,10 +8,10 @@ const shops = [
   ['Pennywhistle Market', 'groceries'],
   ['Lowtide Grocers', 'groceries'],
   ['Harvest Lane Foods', 'groceries'],
-  ['Pasta, Pizza & Co', 'eating_out'],
-  ['Kestrel Coffee Bar', 'eating_out'],
-  ['Saltbush Noodle House', 'eating_out'],
-  ['Ember Grill', 'eating_out'],
+  ['Pasta, Pizza & Co', 'dining'],
+  ['Kestrel Coffee Bar', 'dining'],
+  ['Saltbush Noodle House', 'dining'],
+  ['Ember Grill', 'dining'],
   ['Waverly Fuel Stop', 'transport'],
   ['Tramline Fares', 'transport'],
   ['Lantern Rideshare', 'transport'],
@@ -36,7 +36,7 @@ const shops = [
 test('the category keys and labels are listed in spec order', () => {
   assert.deepEqual(categories, [
     { key: 'groceries', label: 'Groceries' },
-    { key: 'eating_out', label: 'Eating out' },
+    { key: 'dining', label: 'Eating out' },
     { key: 'transport', label: 'Transport' },
     { key: 'bills', label: 'Bills' },
     { key: 'shopping', label: 'Shopping' },
@@ -70,12 +70,12 @@ test('an empty or whitespace-only description is other', () => {
 });
 
 test('when two shops match, the one earlier in the table decides', () => {
-  // 'Ember Grill' (eating_out) is listed before 'Brightfield Power' (bills)
-  assert.equal(categoryOf('Brightfield Power and Ember Grill'), 'eating_out');
+  // 'Ember Grill' (dining) is listed before 'Brightfield Power' (bills)
+  assert.equal(categoryOf('Brightfield Power and Ember Grill'), 'dining');
 });
 
 test('a shop name inside longer bank text still matches', () => {
-  assert.equal(categoryOf('CARD 1234 KESTREL COFFEE BAR SYDNEY'), 'eating_out');
+  assert.equal(categoryOf('CARD 1234 KESTREL COFFEE BAR SYDNEY'), 'dining');
 });
 
 test('a fragment of a shop name is other', () => {

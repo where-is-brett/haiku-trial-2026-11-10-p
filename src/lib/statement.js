@@ -15,6 +15,18 @@ export class NotAStatement extends Error {
 const NUMBER = String.raw`(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?`;
 const AMOUNT = new RegExp(`^(?:-?\\$?${NUMBER}|\\(\\$?${NUMBER}\\))$`);
 
+// An unquoted thousands amount splits into a head such as '$1' and a tail such as '234.50'.
+const SPLIT_HEAD = /^[-($]*\$?\d{1,3}$/;
+const SPLIT_TAIL = /^\d{3}(\.\d{1,2})?\)?$/;
+
+// True when two consecutive fields look like one thousands amount split at its comma.
+function hasSplitThousands(fields) {
+  for (let i = 0; i + 1 < fields.length; i++) {
+    if (SPLIT_HEAD.test(fields[i].trim()) && SPLIT_TAIL.test(fields[i + 1].trim())) return true;
+  }
+  return false;
+}
+
 // Splits CSV text into records of fields, one character at a time.
 // A quoted field may hold commas and line breaks; "" inside quotes is one quote.
 // CR, LF and CRLF each end a record.
@@ -99,6 +111,8 @@ export function readStatement(text) {
 
     const date = record[dateColumn].trim();
     if (!isValidDate(date)) throw new NotAStatement(`row ${rowNumber}: date`);
+
+    if (hasSplitThousands(record)) throw new NotAStatement(`row ${rowNumber}: amount`);
 
     const amount = record[amountColumn].trim();
     if (!AMOUNT.test(amount)) throw new NotAStatement(`row ${rowNumber}: amount`);

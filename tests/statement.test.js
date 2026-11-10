@@ -70,6 +70,20 @@ test('an unterminated quote makes the file a non-statement', () => {
   );
 });
 
+test('a split thousands amount that keeps the field count makes the file a non-statement', () => {
+  for (const row of ['01/08/2026,Pasta,$1,234.50', '01/08/2026,Pasta,$1,234.50,100.00']) {
+    assert.throws(
+      () => readStatement(`Date,Description,Amount,Balance\n${row}\n`),
+      NotAStatement,
+    );
+  }
+});
+
+test('a quoted thousands amount in a four-column statement reads as cents', () => {
+  const text = 'Date,Description,Amount,Balance\n01/08/2026,Pasta,"$1,234.50",100.00\n';
+  assert.deepEqual(readStatement(text).map((r) => r.cents), [123450]);
+});
+
 test('blank lines are skipped and extra columns are ignored', () => {
   const text = 'Date,Description,Amount,Balance\r\n\r\n01/08/2026,A,1.00,50.00\r\n\r\n';
   assert.deepEqual(readStatement(text), [

@@ -2,9 +2,12 @@
 import http from 'node:http';
 import { readStatementPart } from './lib/multipart.js';
 import { importStatement, NotAStatement } from './lib/statement.js';
+import { listMonths, transactionsInMonth } from './lib/months.js';
+import { formatCents } from './lib/money.js';
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const NOT_A_STATEMENT = 'Not a bank statement';
+const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 const IMPORT_FORM =
   '<form method="post" enctype="multipart/form-data">\n' +
   '<input type="file" name="statement">\n' +
@@ -28,6 +31,40 @@ ${body}
 function sendPage(res, status, body, headers = {}) {
   res.writeHead(status, { 'content-type': 'text/html; charset=utf-8', ...headers });
   res.end(page(body));
+}
+
+// Escapes text for HTML so that stored values show as text, not markup.
+export function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Renders the months that have rows, newest first, each linked to its month page.
+function monthList(months) {
+  const items = months.map(
+    ({ month, count, total }) =>
+      `<li><a href="/month?m=${escapeHtml(month)}">${escapeHtml(month)}</a> ` +
+      `${escapeHtml(`${count} transactions, ${formatCents(total)}`)}</li>`,
+  );
+  return `<ul>\n${items.join('\n')}\n</ul>`;
+}
+
+// Renders one month's rows as a table, with the month's total below it.
+function monthTable({ rows, total }) {
+  const body = rows.map(
+    ({ date, description, cents }) =>
+      `<tr><td>${escapeHtml(date)}</td><td>${escapeHtml(description)}</td>` +
+      `<td>${escapeHtml(formatCents(cents))}</td></tr>`,
+  );
+  return (
+    '<table>\n<thead><tr><th>Date</th><th>Description</th><th>Amount</th></tr></thead>\n' +
+    `<tbody>\n${body.join('\n')}\n</tbody>\n</table>\n` +
+    `<p>Total ${escapeHtml(formatCents(total))}</p>`
+  );
 }
 
 // Collects the request body up to the upload limit. Resolves null as soon as the
@@ -81,11 +118,23 @@ export function createApp(db, options) {
   return http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
     if (url.pathname === '/') {
+      if (options.bankImport) {
+        const months = listMonths(db);
+        sendPage(res, 200, months.length === 0 ? '<p>Nothing imported yet</p>' : monthList(months));
+        return;
+      }
       const { n } = db.prepare('SELECT COUNT(*) AS n FROM transactions').get();
       const body = n === 0 ? '<p>Nothing imported yet</p>' : `<p>${n} transactions imported</p>`;
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
       res.end(page(body));
       return;
+    }
+    if (url.pathname === '/month' && options.bankImport) {
+      const month = url.searchParams.get('m');
+      if (month !== null && MONTH_PATTERN.test(month)) {
+        sendPage(res, 200, monthTable(transactionsInMonth(db, month)));
+        return;
+      }
     }
     if (url.pathname === '/import' && options.bankImport) {
       if (req.method === 'GET') {

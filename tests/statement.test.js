@@ -80,6 +80,22 @@ test('a split thousands amount that keeps the field count makes the file a non-s
   }
 });
 
+test('an unquoted decimal comma that keeps the field count makes the file a non-statement', () => {
+  for (const row of ['02/08/2026,Coffee,12,50', '02/08/2026,Coffee,12,5']) {
+    assert.throws(
+      () => readStatement(`Date,Description,Amount,Note\n${row}\n`),
+      NotAStatement,
+    );
+  }
+});
+
+test('a two-digit description before the amount does not make the file a non-statement', () => {
+  const text = 'Date,Description,Amount\n02/08/2026,42,123.45\n';
+  assert.deepEqual(readStatement(text), [
+    { date: '2026-08-02', description: '42', cents: 12345 },
+  ]);
+});
+
 test('a quoted thousands amount in a four-column statement reads as cents', () => {
   const text = 'Date,Description,Amount,Balance\n01/08/2026,Pasta,"$1,234.50",100.00\n';
   assert.deepEqual(readStatement(text).map((r) => r.cents), [123450]);

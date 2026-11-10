@@ -15,16 +15,20 @@ export class NotAStatement extends Error {
 const NUMBER = String.raw`(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d{1,2})?`;
 const AMOUNT = new RegExp(`^(?:-?\\$?${NUMBER}|\\(\\$?${NUMBER}\\))$`);
 
-// An unquoted thousands amount splits into a head such as '$1' and a tail such as '234.50'.
-const SPLIT_HEAD = /^[-($]*\$?\d{1,3}$/;
-const SPLIT_TAIL = /^\d{3}(\.\d{1,2})?\)?$/;
+// An unquoted amount split at a comma leaves two fields: a head and a tail.
+// Thousands: '$1' + '234.50'. Decimal comma: '12' + '50'.
+const SPLIT_THOUSANDS_HEAD = /^[-($]*\$?\d{1,3}$/;
+const SPLIT_THOUSANDS_TAIL = /^\d{3}(\.\d{1,2})?\)?$/;
+const SPLIT_DECIMAL_HEAD = /^[-($]*\$?\d+$/;
+const SPLIT_DECIMAL_TAIL = /^\d{1,2}\)?$/;
 
-// True when two consecutive fields look like one thousands amount split at its comma.
-function hasSplitThousands(fields) {
-  for (let i = 0; i + 1 < fields.length; i++) {
-    if (SPLIT_HEAD.test(fields[i].trim()) && SPLIT_TAIL.test(fields[i + 1].trim())) return true;
-  }
-  return false;
+// True when the amount field and the field after it are one amount split at a comma.
+function isSplitAmount(fields, amountColumn) {
+  if (amountColumn + 1 >= fields.length) return false;
+  const head = fields[amountColumn].trim();
+  const tail = fields[amountColumn + 1].trim();
+  return (SPLIT_THOUSANDS_HEAD.test(head) && SPLIT_THOUSANDS_TAIL.test(tail))
+    || (SPLIT_DECIMAL_HEAD.test(head) && SPLIT_DECIMAL_TAIL.test(tail));
 }
 
 // Splits CSV text into records of fields, one character at a time.
@@ -112,7 +116,7 @@ export function readStatement(text) {
     const date = record[dateColumn].trim();
     if (!isValidDate(date)) throw new NotAStatement(`row ${rowNumber}: date`);
 
-    if (hasSplitThousands(record)) throw new NotAStatement(`row ${rowNumber}: amount`);
+    if (isSplitAmount(record, amountColumn)) throw new NotAStatement(`row ${rowNumber}: amount`);
 
     const amount = record[amountColumn].trim();
     if (!AMOUNT.test(amount)) throw new NotAStatement(`row ${rowNumber}: amount`);

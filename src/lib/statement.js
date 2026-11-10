@@ -125,3 +125,42 @@ export function readStatement(text) {
   }
   return rows;
 }
+
+// Stores a statement's rows in the ledger. Per (date, description, cents), adds
+// max(0, lines in file - rows already stored), so identical lines in one file are
+// all kept and a repeated import adds nothing. Throws NotAStatement before any write.
+export function importStatement(db, text) {
+  const rows = readStatement(text);
+
+  const groups = new Map();
+  for (const row of rows) {
+    const key = JSON.stringify([row.date, row.description, row.cents]);
+    const group = groups.get(key);
+    if (group) group.count++;
+    else groups.set(key, { row, count: 1 });
+  }
+
+  const countStored = db.prepare(
+    'SELECT COUNT(*) AS n FROM transactions WHERE date = ? AND description = ? AND cents = ?',
+  );
+  const insert = db.prepare(
+    'INSERT INTO transactions (date, description, cents) VALUES (?, ?, ?)',
+  );
+
+  let added = 0;
+  db.exec('BEGIN');
+  try {
+    for (const { row, count } of groups.values()) {
+      const stored = countStored.get(row.date, row.description, row.cents).n;
+      for (let i = 0; i < Math.max(0, count - stored); i++) {
+        insert.run(row.date, row.description, row.cents);
+        added++;
+      }
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+  return { added, skipped: rows.length - added };
+}

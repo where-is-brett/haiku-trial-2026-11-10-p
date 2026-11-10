@@ -3,7 +3,7 @@
 // The category keys and labels, in the order they are shown.
 export const categories = [
   { key: 'groceries', label: 'Groceries' },
-  { key: 'eating_out', label: 'Eating out' },
+  { key: 'dining', label: 'Eating out' },
   { key: 'transport', label: 'Transport' },
   { key: 'bills', label: 'Bills' },
   { key: 'shopping', label: 'Shopping' },
@@ -18,10 +18,10 @@ const shops = [
   ['Pennywhistle Market', 'groceries'],
   ['Lowtide Grocers', 'groceries'],
   ['Harvest Lane Foods', 'groceries'],
-  ['Pasta, Pizza & Co', 'eating_out'],
-  ['Kestrel Coffee Bar', 'eating_out'],
-  ['Saltbush Noodle House', 'eating_out'],
-  ['Ember Grill', 'eating_out'],
+  ['Pasta, Pizza & Co', 'dining'],
+  ['Kestrel Coffee Bar', 'dining'],
+  ['Saltbush Noodle House', 'dining'],
+  ['Ember Grill', 'dining'],
   ['Waverly Fuel Stop', 'transport'],
   ['Tramline Fares', 'transport'],
   ['Lantern Rideshare', 'transport'],
